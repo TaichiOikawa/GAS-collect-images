@@ -1,72 +1,168 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import viteLogo from "./assets/vite.svg";
+import FilePreviewGrid from "@/components/FilePreviewGrid";
+import FileSelectButton from "@/components/FileSelectButton";
+import MenuDialog from "@/components/MenuDialog";
+import SendingDialog from "@/components/SendingDialog";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { userIdAtom } from "@/lib/userIdAtom";
+import { useAtom } from "jotai";
+import { AlignJustifyIcon, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useFileUpload } from "./lib/useFileUpload";
 
 function App() {
-	const [count, setCount] = useState(0);
-	const [message, setMessage] = useState<string | null>(null);
+	const [userId, setUserId] = useAtom(userIdAtom);
+	const {
+		inputRef,
+		selectedFileArray,
+		previewUrls,
+		dialogOpen,
+		sendingList,
+		handleChange,
+		handleDelete,
+		handleDeleteAll,
+		handleSend,
+		handleDialogClose,
+	} = useFileUpload();
 
-	const handleClick = () => {
-		setMessage("Sending message to GAS...");
-		window.google.script.run
-			.withSuccessHandler((response: string) => {
-				setMessage(response);
-			})
-			.withFailureHandler((error) => {
-				setMessage(`Error: ${error.message}`);
-			})
-			.pingPong();
-	};
+	const [dialogPage, setDialogPage] = useState<
+		"menu" | "summarize" | "ranking" | "license"
+	>("menu");
+	const [summaryData, setSummaryData] = useState<{
+		numberOfImages: number;
+		numberOfUsers: number;
+		userImages: number;
+	} | null>(null);
+	const [loadingSummaryData, setLoadingSummaryData] = useState(false);
+	const [rankingData, setRankingData] = useState<
+		| {
+				userId: string;
+				images: string;
+				ranking: string;
+		  }[]
+		| null
+	>(null);
+	const [loadingRanking, setLoadingRanking] = useState(false);
+
+	useEffect(() => {
+		const userId = localStorage.getItem("user-id");
+		if (!userId) {
+			const newId = crypto.randomUUID();
+			localStorage.setItem("user-id", newId);
+			setUserId(newId);
+		} else {
+			setUserId(userId);
+		}
+	}, [setUserId]);
+
+	useEffect(() => {
+		if (dialogPage === "summarize") {
+			setLoadingSummaryData(true);
+			window.google.script.run
+				.withSuccessHandler(
+					(result: {
+						numberOfImages: number;
+						numberOfUsers: number;
+						userImages: number;
+					}) => {
+						console.log("Summary data received:", result);
+						setSummaryData(result);
+						setLoadingSummaryData(false);
+					},
+				)
+				.withFailureHandler(() => {
+					setSummaryData(null);
+					setLoadingSummaryData(false);
+				})
+				.getSummary(userId);
+		} else {
+			setSummaryData(null);
+		}
+	}, [dialogPage, userId]);
+
+	useEffect(() => {
+		if (dialogPage === "ranking") {
+			setLoadingRanking(true);
+			window.google.script.run
+				.withSuccessHandler(
+					(
+						result: {
+							userId: string;
+							images: string;
+							ranking: string;
+						}[],
+					) => {
+						setRankingData(result);
+						setLoadingRanking(false);
+					},
+				)
+				.withFailureHandler(() => {
+					setRankingData(null);
+					setLoadingRanking(false);
+				})
+				.getRanking();
+		} else {
+			setRankingData(null);
+		}
+	}, [dialogPage]);
 
 	return (
-		<div className="mx-auto flex min-h-screen max-w-[1280px] flex-col items-center justify-center bg-white p-8 text-center font-sans text-[#213547]">
-			<div className="flex items-center justify-center gap-8">
-				<a href="https://vite.dev" rel="noopener noreferrer" target="_blank">
-					<img
-						alt="Vite logo"
-						className="transition-filter h-32 p-3 duration-300 hover:drop-shadow-[0_0_2em_#646cffaa]"
-						src={viteLogo}
+		<div className="flex min-h-dvh flex-col">
+			<header className="py-5 text-center">
+				<p>北見北斗高校 生徒会執行部</p>
+				<h1 className="text-3xl">画像収集システム</h1>
+			</header>
+			<main className="pb-10">
+				<div className="flex flex-col items-center gap-5">
+					<FileSelectButton inputRef={inputRef} onChange={handleChange} />
+					{selectedFileArray.length === 0 && <p>ファイルを選択してください</p>}
+					<FilePreviewGrid
+						files={selectedFileArray}
+						onDelete={handleDelete}
+						previewUrls={previewUrls}
 					/>
-				</a>
-				<a href="https://react.dev" rel="noopener noreferrer" target="_blank">
-					<img
-						alt="React logo"
-						className="transition-filter animate-spin-slow h-32 p-3 duration-300 hover:drop-shadow-[0_0_2em_#61dafbaa]"
-						src={reactLogo}
-					/>
-				</a>
-			</div>
-			<h1 className="mt-8 mb-4 text-[3.2em] leading-[1.1] font-bold">
-				Vite + React
-			</h1>
-			<div className="card mb-4 rounded-lg bg-transparent p-8">
-				<div className="flex flex-col items-center justify-center gap-4">
-					<button
-						className="cursor-pointer rounded-lg border border-transparent bg-[#f9f9f9c2] px-5 py-2 text-base font-medium text-black transition-colors duration-200 hover:border-[#646cff] focus:outline focus:outline-blue-400"
-						onClick={() => setCount((count) => count + 1)}
-					>
-						count is {count}
-					</button>
-					<button
-						className="cursor-pointer rounded-lg border border-transparent bg-[#f9f9f9c2] px-5 py-2 text-base font-medium text-black transition-colors duration-200 hover:border-[#646cff] focus:outline focus:outline-blue-400"
-						onClick={handleClick}
-					>
-						Send Message To GAS
-					</button>
 				</div>
-				<p className="mt-4">
-					Edit <code className="font-mono">src/App.tsx</code> and save to test
-					HMR
-				</p>
-			</div>
-			<p className="text-[#888]">
-				Click on the Vite and React logos to learn more
-			</p>
-			{message && (
-				<div className="mt-4">
-					<p className="text-lg font-semibold">{message}</p>
+				<div className="fixed bottom-6 left-1/2 flex w-full max-w-3xl -translate-x-1/2 justify-center gap-3">
+					<Button
+						className="h-12 w-62 text-lg"
+						disabled={selectedFileArray.length === 0}
+						onClick={handleSend}
+					>
+						送信する ({selectedFileArray.length} 件)
+					</Button>
+					<Button
+						className="h-12 w-12"
+						disabled={selectedFileArray.length === 0}
+						onClick={handleDeleteAll}
+						variant="outline"
+					>
+						<Trash2 className="size-6 text-red-500" />
+					</Button>
+					<Dialog onOpenChange={(open) => !open && setDialogPage("menu")}>
+						<DialogTrigger asChild>
+							<Button className="h-12 w-12" variant="outline">
+								<AlignJustifyIcon className="size-6" />
+							</Button>
+						</DialogTrigger>
+						<DialogContent>
+							<MenuDialog
+								dialogPage={dialogPage}
+								loadingRanking={loadingRanking}
+								loadingSummaryData={loadingSummaryData}
+								rankingData={rankingData}
+								setDialogPage={setDialogPage}
+								summaryData={summaryData}
+							/>
+						</DialogContent>
+					</Dialog>
 				</div>
-			)}
+			</main>
+
+			<SendingDialog
+				dialogOpen={dialogOpen}
+				handleDialogClose={handleDialogClose}
+				sendingList={sendingList}
+			/>
 		</div>
 	);
 }

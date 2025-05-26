@@ -1,5 +1,5 @@
-import fs from "node:fs";
 import { build } from "esbuild";
+import fs from "node:fs";
 import ts from "typescript";
 import { collectExportedFunctionNames } from "./exportHandlers.ts";
 

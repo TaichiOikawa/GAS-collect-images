@@ -12,7 +12,38 @@ declare global {
 
 		// Custom methods
 		// If you add a new method to the main.ts file, add it here
-		pingPong: () => string;
+		createImageRecord: (
+			userId: string,
+			amount: number,
+		) => Promise<{
+			success: boolean;
+			ids?: string[];
+		}>;
+		imageUpload: (
+			id: string,
+			formObject: {
+				filename: string;
+				data: string;
+			},
+		) => Promise<{ success: boolean }>;
+		getSummary: (userId: string) => Promise<{
+			numberOfImages: number;
+			numberOfUsers: number;
+			userImages: number;
+		}>;
+		getUserData: (userId: string) => Promise<{
+			userId: string;
+			createdAt: string;
+			images: string;
+			ranking: string;
+		}>;
+		getRanking: () => Promise<
+			{
+				userId: string;
+				images: string;
+				ranking: string;
+			}[]
+		>;
 	}
 
 	interface Window {

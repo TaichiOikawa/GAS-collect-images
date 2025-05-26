@@ -1,10 +1,3 @@
-# GAS × React(Vite) Template
+# 画像収集システム
 
-## Usage
-1. Write your GAS project code to `.clasp.json`
-2. Process Commands
-    ```
-    $ yarn
-    $ cd frontend && yarn
-    ```
-3. Enjoy!!
+北見北斗高校 生徒会執行部
