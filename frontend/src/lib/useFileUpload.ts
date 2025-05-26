@@ -39,6 +39,7 @@ export function useFileUpload() {
 	const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		if (!e.target.files) return;
 		if (!inputRef.current?.files) return;
+		const MAX_FILES = 100;
 		const newFileArray = [
 			...selectedFileArray,
 			...Array.from(e.target.files),
@@ -46,6 +47,12 @@ export function useFileUpload() {
 			(file, index, self) =>
 				self.findIndex((f) => f.name === file.name) === index,
 		);
+
+		if (newFileArray.length > MAX_FILES) {
+			alert(`ファイルは最大${MAX_FILES}件までです。`);
+			newFileArray.length = MAX_FILES;
+		}
+
 		const dt = new DataTransfer();
 		newFileArray.forEach((file) => dt.items.add(file));
 		inputRef.current.files = dt.files;
@@ -76,81 +83,103 @@ export function useFileUpload() {
 			})),
 		);
 
+		const BATCH_SIZE = 20;
 		try {
-			// 1. Get user data
-			await new Promise<void>((resolve, reject) => {
-				window.google.script.run
-					.withSuccessHandler(() => {
-						console.log("User checked in successfully.");
-						resolve();
-					})
-					.withFailureHandler((error: Error) => {
-						console.error("Error checking in user:", error);
-						reject(error);
-					})
-					.getUserData(userId);
-			});
-
-			// 2. Create image record
-			let ids: string[] = [];
-			await new Promise<void>((resolve, reject) => {
-				window.google.script.run
-					.withSuccessHandler(
-						(result: { success: boolean; ids?: string[] }) => {
-							if (result.success && result.ids) {
-								ids = result.ids;
-								setSendingList((prev) =>
-									prev.map((item, idx) => ({
-										...item,
-										id: result.ids![idx],
-									})),
-								);
-							}
+			for (
+				let batchStart = 0;
+				batchStart < selectedFileArray.length;
+				batchStart += BATCH_SIZE
+			) {
+				const batchFiles = selectedFileArray.slice(
+					batchStart,
+					batchStart + BATCH_SIZE,
+				);
+				// 1. Get user data
+				await new Promise<void>((resolve, reject) => {
+					window.google.script.run
+						.withSuccessHandler(() => {
+							console.log("User checked in successfully.");
 							resolve();
-						},
-					)
-					.withFailureHandler((error: Error) => {
-						console.error("Error creating image record:", error);
-						reject(error);
-					})
-					.createImageRecord(userId, selectedFileArray.length);
-			});
+						})
+						.withFailureHandler((error: Error) => {
+							console.error("Error checking in user:", error);
+							reject(error);
+						})
+						.getUserData(userId);
+				});
 
-			// 3. Upload images
-			await Promise.all(
-				selectedFileArray.map(async (file, i) => {
-					const base64 = await new Promise<string>((resolve, reject) => {
-						const reader = new FileReader();
-						reader.onload = () => {
-							const result = reader.result as string;
-							resolve(result.split(",")[1]);
-						};
-						reader.onerror = reject;
-						reader.readAsDataURL(file);
-					});
+				// 2. Create image record
+				let ids: string[] = [];
+				await new Promise<void>((resolve, reject) => {
+					window.google.script.run
+						.withSuccessHandler(
+							(result: { success: boolean; ids?: string[] }) => {
+								if (result.success && result.ids) {
+									ids = result.ids;
+									setSendingList((prev) =>
+										prev.map((item, idx) => {
+											if (
+												idx >= batchStart &&
+												idx < batchStart + batchFiles.length
+											) {
+												return {
+													...item,
+													id: result.ids![idx - batchStart],
+												};
+											}
+											return item;
+										}),
+									);
+								}
+								resolve();
+							},
+						)
+						.withFailureHandler((error: Error) => {
+							console.error("Error creating image record:", error);
+							reject(error);
+						})
+						.createImageRecord(userId, batchFiles.length);
+				});
 
-					await new Promise<void>((resolve) => {
-						window.google.script.run
-							.withSuccessHandler((result: { success: boolean }) => {
-								setSendingList((prev) =>
-									prev.map((item, idx) =>
-										idx === i ? { ...item, isSuccess: result.success } : item,
-									),
-								);
-								resolve();
-							})
-							.withFailureHandler(() => {
-								setSendingList((prev) =>
-									prev.map((item, idx) =>
-										idx === i ? { ...item, isSuccess: false } : item,
-									),
-								);
-								resolve();
-							})
-							.imageUpload(ids[i], { filename: file.name, data: base64 });
-					});
-				}),
-			);
+				// 3. Upload images
+				await Promise.all(
+					batchFiles.map(async (file, i) => {
+						const globalIdx = batchStart + i;
+						const base64 = await new Promise<string>((resolve, reject) => {
+							const reader = new FileReader();
+							reader.onload = () => {
+								const result = reader.result as string;
+								resolve(result.split(",")[1]);
+							};
+							reader.onerror = reject;
+							reader.readAsDataURL(file);
+						});
+
+						await new Promise<void>((resolve) => {
+							window.google.script.run
+								.withSuccessHandler((result: { success: boolean }) => {
+									setSendingList((prev) =>
+										prev.map((item, idx) =>
+											idx === globalIdx
+												? { ...item, isSuccess: result.success }
+												: item,
+										),
+									);
+									resolve();
+								})
+								.withFailureHandler(() => {
+									setSendingList((prev) =>
+										prev.map((item, idx) =>
+											idx === globalIdx ? { ...item, isSuccess: false } : item,
+										),
+									);
+									resolve();
+								})
+								.imageUpload(ids[i], { filename: file.name, data: base64 });
+						});
+					}),
+				);
+			}
 		} catch (error) {
 			console.error("Error in handleSend:", error);
 			setSendingList((prev) =>

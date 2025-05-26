@@ -51,7 +51,13 @@ export function imageUpload(
 	id: string,
 	formObject: { filename: string; data: string },
 ) {
-	console.log("imageUpload called", "id:", id, "fileName:", formObject.filename);
+	console.log(
+		"imageUpload called",
+		"id:",
+		id,
+		"fileName:",
+		formObject.filename,
+	);
 	const imageSheet = ss.at("Images");
 	let fileUrl = "";
 	try {
@@ -96,7 +102,7 @@ export function imageUpload(
 export function getSummary(userId: string) {
 	const imageSheet = ss.at("Images");
 	const userSheet = ss.at("Users");
-	const numberOfImages = imageSheet.findAll().length;
+	const numberOfImages = imageSheet.findAll().filter((item) => item.url).length;
 	const numberOfUsers = userSheet.findAll().length;
 	const user = userSheet.find({ userId: userId })[0];
 	const userImage = user ? user.images : 0;
@@ -137,7 +143,7 @@ export function getUserData(userId: string) {
 		userSheet.insert({
 			userId: userId,
 			createdAt: new Date().toLocaleString(),
-			images: `=COUNTIF(Images!B:B, "${userId}")`,
+			images: `=COUNTIFS(Images!B:B, "${userId}", Images!D:D, "<>")`,
 			ranking: `=RANK(INDIRECT("C" & MATCH("${userId}", Users!A:A, 0)), Users!C:C, 0)`,
 		});
 		const newUser = userSheet.find({ userId: userId })[0];
