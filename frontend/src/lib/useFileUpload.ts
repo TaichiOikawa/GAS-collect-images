@@ -83,6 +83,21 @@ export function useFileUpload() {
 			})),
 		);
 
+		const canUpload = await new Promise<boolean>((resolve, reject) => {
+			window.google.script.run
+				.withSuccessHandler(resolve)
+				.withFailureHandler((error: Error) => {
+					console.error("Error checking upload permission:", error);
+					reject(error);
+				})
+				.checkCanUpload();
+		});
+		if (!canUpload) {
+			alert("アップロードは現在受け付けていません");
+			setDialogOpen(false);
+			return;
+		}
+
 		const BATCH_SIZE = 20;
 		try {
 			for (
@@ -113,7 +128,14 @@ export function useFileUpload() {
 				await new Promise<void>((resolve, reject) => {
 					window.google.script.run
 						.withSuccessHandler(
-							(result: { success: boolean; ids?: string[] }) => {
+							(
+								result:
+									| {
+											success: true;
+											ids?: string[];
+									  }
+									| { success: false; isError: boolean; message?: string },
+							) => {
 								if (result.success && result.ids) {
 									ids = result.ids;
 									setSendingList((prev) =>

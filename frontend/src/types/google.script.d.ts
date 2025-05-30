@@ -12,13 +12,17 @@ declare global {
 
 		// Custom methods
 		// If you add a new method to the main.ts file, add it here
+		checkCanUpload: () => Promise<boolean>;
 		createImageRecord: (
 			userId: string,
 			amount: number,
-		) => Promise<{
-			success: boolean;
-			ids?: string[];
-		}>;
+		) => Promise<
+			| {
+					success: true;
+					ids?: string[];
+			  }
+			| { success: false; message?: string }
+		>;
 		imageUpload: (
 			id: string,
 			formObject: {
@@ -26,11 +30,17 @@ declare global {
 				data: string;
 			},
 		) => Promise<{ success: boolean }>;
-		getSummary: (userId: string) => Promise<{
-			numberOfImages: number;
-			numberOfUsers: number;
-			userImages: number;
-		}>;
+		getSummary: (userId: string) => Promise<
+			| {
+					data: {
+						numberOfImages: number;
+						numberOfUsers: number;
+						userImages: number;
+					};
+					success: true;
+			  }
+			| { success: false }
+		>;
 		getUserData: (userId: string) => Promise<{
 			userId: string;
 			createdAt: string;
@@ -38,11 +48,15 @@ declare global {
 			ranking: string;
 		}>;
 		getRanking: () => Promise<
-			{
-				userId: string;
-				images: string;
-				ranking: string;
-			}[]
+			| {
+					data: {
+						userId: string;
+						images: string;
+						ranking: string;
+					}[];
+					success: true;
+			  }
+			| { success: false }
 		>;
 	}
 

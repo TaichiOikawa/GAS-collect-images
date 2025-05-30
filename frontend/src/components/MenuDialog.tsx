@@ -1,7 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { userIdAtom } from "@/lib/userIdAtom";
 import { AnimatePresence, motion } from "framer-motion";
+import { useAtom } from "jotai";
 import { CrownIcon, NotebookTextIcon } from "lucide-react";
 import React from "react";
 
@@ -32,6 +34,7 @@ const MenuDialog: React.FC<MenuDialogProps> = ({
 	loadingRanking,
 	rankingData,
 }) => {
+	const [userId] = useAtom(userIdAtom);
 	return (
 		<AnimatePresence mode="wait">
 			{dialogPage === "ranking" ? (
@@ -56,7 +59,9 @@ const MenuDialog: React.FC<MenuDialogProps> = ({
 						<div className="grid grid-flow-col grid-cols-2 grid-rows-5 gap-4 px-3">
 							{rankingData.map((row) => (
 								<div
-									className="flex items-center justify-between rounded-lg border px-4 py-2"
+									className={`flex items-center justify-between rounded-lg border px-4 py-2 ${
+										row.userId == userId && "border-blue-300 bg-blue-100"
+									}`}
 									key={row.userId}
 								>
 									<div className="flex items-center gap-2">
@@ -78,8 +83,12 @@ const MenuDialog: React.FC<MenuDialogProps> = ({
 								</div>
 							))}
 						</div>
+					) : !rankingData ? (
+						<p className="text-center">
+							ランキングデータは現在公開されていません。
+						</p>
 					) : (
-						<p>ランキングデータがありません。</p>
+						<p className="text-center">ランキングデータがありません。</p>
 					)}
 					<Button
 						className="mt-4"
@@ -116,7 +125,7 @@ const MenuDialog: React.FC<MenuDialogProps> = ({
 								<Skeleton className="h-14 w-20" />
 							</div>
 						</div>
-					) : (
+					) : summaryData ? (
 						<div className="grid grid-cols-3 gap-4">
 							<div className="text-center">
 								写真の数
@@ -124,16 +133,18 @@ const MenuDialog: React.FC<MenuDialogProps> = ({
 								<span className="text-5xl">{summaryData?.numberOfImages}</span>
 							</div>
 							<div className="text-center">
-								ユーザーの数
+								ユーザー数
 								<br />
 								<span className="text-5xl">{summaryData?.numberOfUsers}</span>
 							</div>
 							<div className="text-center">
-								あなたの写真の数
+								あなたの写真
 								<br />
 								<span className="text-5xl">{summaryData?.userImages}</span>
 							</div>
 						</div>
+					) : (
+						<p className="text-center">集計データは現在公開されていません。</p>
 					)}
 					<Button onClick={() => setDialogPage("menu")} variant="secondary">
 						戻る
