@@ -3,7 +3,7 @@
 	"private": true,
 	"version": "0.0.0",
 	"type": "module",
-	"license": "UNLICENSED",
+	"license": "MIT",
 	"scripts": {
 		"dev": "vite",
 		"build": "yarn lint && tsc -b && vite build",
@@ -19,7 +19,6 @@
 		"class-variance-authority": "^0.7.1",
 		"clsx": "^2.1.1",
 		"framer-motion": "^12.12.2",
-		"jotai": "^2.12.4",
 		"lucide-react": "^0.511.0",
 		"react": "^19.1.0",
 		"react-dom": "^19.1.0",

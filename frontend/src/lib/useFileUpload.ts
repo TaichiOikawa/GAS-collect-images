@@ -1,6 +1,4 @@
-import { useAtom } from "jotai";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { userIdAtom } from "./userIdAtom";
 
 export function useFileUpload() {
 	const inputRef = useRef<HTMLInputElement>(null);
@@ -14,7 +12,6 @@ export function useFileUpload() {
 			id?: string;
 		}[]
 	>([]);
-	const [userId] = useAtom(userIdAtom);
 
 	const selectedFileArray: File[] = useMemo(() => {
 		return inputFiles ? [...Array.from(inputFiles)] : [];
@@ -83,21 +80,6 @@ export function useFileUpload() {
 			})),
 		);
 
-		const canUpload = await new Promise<boolean>((resolve, reject) => {
-			window.google.script.run
-				.withSuccessHandler(resolve)
-				.withFailureHandler((error: Error) => {
-					console.error("Error checking upload permission:", error);
-					reject(error);
-				})
-				.checkCanUpload();
-		});
-		if (!canUpload) {
-			alert("アップロードは現在受け付けていません");
-			setDialogOpen(false);
-			return;
-		}
-
 		const BATCH_SIZE = 20;
 		try {
 			for (
@@ -109,61 +91,8 @@ export function useFileUpload() {
 					batchStart,
 					batchStart + BATCH_SIZE,
 				);
-				// 1. Get user data
-				await new Promise<void>((resolve, reject) => {
-					window.google.script.run
-						.withSuccessHandler(() => {
-							console.log("User checked in successfully.");
-							resolve();
-						})
-						.withFailureHandler((error: Error) => {
-							console.error("Error checking in user:", error);
-							reject(error);
-						})
-						.getUserData(userId);
-				});
 
-				// 2. Create image record
-				let ids: string[] = [];
-				await new Promise<void>((resolve, reject) => {
-					window.google.script.run
-						.withSuccessHandler(
-							(
-								result:
-									| {
-											success: true;
-											ids?: string[];
-									  }
-									| { success: false; isError: boolean; message?: string },
-							) => {
-								if (result.success && result.ids) {
-									ids = result.ids;
-									setSendingList((prev) =>
-										prev.map((item, idx) => {
-											if (
-												idx >= batchStart &&
-												idx < batchStart + batchFiles.length
-											) {
-												return {
-													...item,
-													id: result.ids![idx - batchStart],
-												};
-											}
-											return item;
-										}),
-									);
-								}
-								resolve();
-							},
-						)
-						.withFailureHandler((error: Error) => {
-							console.error("Error creating image record:", error);
-							reject(error);
-						})
-						.createImageRecord(userId, batchFiles.length);
-				});
-
-				// 3. Upload images
+				// Upload images
 				await Promise.all(
 					batchFiles.map(async (file, i) => {
 						const globalIdx = batchStart + i;
@@ -197,7 +126,7 @@ export function useFileUpload() {
 									);
 									resolve();
 								})
-								.imageUpload(ids[i], { filename: file.name, data: base64 });
+								.imageUpload({ filename: file.name, data: base64 });
 						});
 					}),
 				);

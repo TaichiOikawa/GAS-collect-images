@@ -3,7 +3,7 @@
 	"version": "0.0.0",
 	"main": "dist/main.js",
 	"type": "module",
-	"license": "UNLICENSED",
+	"license": "MIT",
 	"scripts": {
 		"clean": "rimraf ./dist ./frontend/dist",
 		"lint": "eslint . --ext ts --report-unused-disable-directives --max-warnings 0",
