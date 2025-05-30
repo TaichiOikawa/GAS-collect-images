@@ -1,14 +1,25 @@
 import { Spreadsheet } from "./db";
 import { getPropertiesService } from "./utils";
 
-const GOOGLE_DRIVE_FOLDER_ID = getPropertiesService("GOOGLE_DRIVE_FOLDER_ID");
 const SPREADSHEET_ID = getPropertiesService("SPREADSHEET_ID");
 const ss = new Spreadsheet().from(SPREADSHEET_ID);
+const manageSheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(
+	"Manage",
+) as GoogleAppsScript.Spreadsheet.Sheet;
 
 export function doGet() {
+	const canAccess = manageSheet.getRange("D4").getValue() as boolean;
+	if (!canAccess) {
+		return HtmlService.createHtmlOutput("アクセスが許可されていません。");
+	}
 	return HtmlService.createHtmlOutputFromFile("index")
 		.addMetaTag("viewport", "width=device-width, initial-scale=1")
 		.setTitle("画像収集システム");
+}
+
+export function checkCanUpload() {
+	const canSend = manageSheet.getRange("D5").getValue() as boolean;
+	return canSend;
 }
 
 export function createImageRecord(userId: string, amount: number) {
@@ -41,6 +52,7 @@ export function createImageRecord(userId: string, amount: number) {
 		console.error("Lock acquisition failed or error in createImageRecord", e);
 		return {
 			success: false,
+			isError: true,
 		};
 	} finally {
 		lock.releaseLock();
@@ -59,6 +71,7 @@ export function imageUpload(
 		formObject.filename,
 	);
 	const imageSheet = ss.at("Images");
+	const drive_folder_id = manageSheet.getRange("D9").getValue() as string;
 	let fileUrl = "";
 	try {
 		const base64Data = formObject.data.replace(
@@ -70,7 +83,7 @@ export function imageUpload(
 			"image/png", // 必要に応じてMIMEタイプを変更
 			formObject.filename,
 		);
-		const folder = DriveApp.getFolderById(GOOGLE_DRIVE_FOLDER_ID);
+		const folder = DriveApp.getFolderById(drive_folder_id);
 		const file = folder.createFile(blob);
 		fileUrl = file.getUrl();
 	} catch (e) {
@@ -100,6 +113,13 @@ export function imageUpload(
 }
 
 export function getSummary(userId: string) {
+	const canAccess = manageSheet.getRange("D6").getValue() as boolean;
+	if (!canAccess) {
+		return {
+			success: false,
+		};
+	}
+
 	const imageSheet = ss.at("Images");
 	const userSheet = ss.at("Users");
 	const numberOfImages = imageSheet.findAll().filter((item) => item.url).length;
@@ -120,9 +140,12 @@ export function getSummary(userId: string) {
 	);
 
 	return {
-		numberOfImages: numberOfImages,
-		numberOfUsers: numberOfUsers,
-		userImages: userImage,
+		data: {
+			numberOfImages: numberOfImages,
+			numberOfUsers: numberOfUsers,
+			userImages: userImage,
+		},
+		success: true,
 	};
 }
 
@@ -161,6 +184,11 @@ export function getUserData(userId: string) {
 }
 
 export function getRanking() {
+	const canAccess = manageSheet.getRange("D7").getValue() as boolean;
+	if (!canAccess) {
+		return { success: false };
+	}
+
 	const rankingSheet = ss.at("Ranking");
 	const rankingData = rankingSheet.findAll();
 	const newRankingData = rankingData
@@ -171,5 +199,5 @@ export function getRanking() {
 		}))
 		.splice(0, 10);
 	console.log("getRanking called", newRankingData);
-	return newRankingData;
+	return { data: newRankingData, success: true };
 }

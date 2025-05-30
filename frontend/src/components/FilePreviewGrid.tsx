@@ -12,7 +12,7 @@ const FilePreviewGrid: React.FC<FilePreviewGridProps> = ({
 	previewUrls,
 }) => {
 	return (
-		<div className="mx-auto grid w-fit grid-cols-2 gap-5 px-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+		<div className="mx-auto grid w-fit grid-cols-2 gap-5 px-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 pb-12">
 			{files.map((file, index) => (
 				<div
 					className="relative flex flex-col items-center space-y-2 rounded border bg-white p-2"

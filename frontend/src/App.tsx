@@ -60,14 +60,26 @@ function App() {
 			setLoadingSummaryData(true);
 			window.google.script.run
 				.withSuccessHandler(
-					(result: {
-						numberOfImages: number;
-						numberOfUsers: number;
-						userImages: number;
-					}) => {
-						console.log("Summary data received:", result);
-						setSummaryData(result);
-						setLoadingSummaryData(false);
+					(
+						result:
+							| {
+									data: {
+										numberOfImages: number;
+										numberOfUsers: number;
+										userImages: number;
+									};
+									success: true;
+							  }
+							| { success: false },
+					) => {
+						if (result.success) {
+							console.log("Summary data received:", result);
+							setSummaryData(result.data);
+							setLoadingSummaryData(false);
+						} else {
+							setSummaryData(null);
+							setLoadingSummaryData(false);
+						}
 					},
 				)
 				.withFailureHandler(() => {
@@ -86,13 +98,23 @@ function App() {
 			window.google.script.run
 				.withSuccessHandler(
 					(
-						result: {
-							userId: string;
-							images: string;
-							ranking: string;
-						}[],
+						result:
+							| {
+									data: {
+										userId: string;
+										images: string;
+										ranking: string;
+									}[];
+									success: true;
+							  }
+							| { success: false },
 					) => {
-						setRankingData(result);
+						if (!result.success) {
+							setRankingData(null);
+							setLoadingRanking(false);
+							return;
+						}
+						setRankingData(result.data);
 						setLoadingRanking(false);
 					},
 				)
