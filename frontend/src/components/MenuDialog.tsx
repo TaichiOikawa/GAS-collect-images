@@ -1,15 +1,17 @@
 import { Button } from "@/components/ui/button";
 import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { userIdAtom } from "@/lib/userIdAtom";
+import { userIdAtom } from "@/lib/atoms";
 import { AnimatePresence, motion } from "framer-motion";
-import { useAtom } from "jotai";
-import { CrownIcon, NotebookTextIcon } from "lucide-react";
+import { useAtomValue } from "jotai";
+import { CrownIcon, NotebookTextIcon, UserIcon } from "lucide-react";
 import React from "react";
 
 export type MenuDialogProps = {
-	dialogPage: "menu" | "summarize" | "ranking" | "license";
-	setDialogPage: (page: "menu" | "summarize" | "ranking" | "license") => void;
+	dialogPage: "menu" | "summarize" | "ranking" | "user" | "license";
+	setDialogPage: (
+		page: "menu" | "summarize" | "ranking" | "user" | "license",
+	) => void;
 	loadingSummaryData: boolean;
 	summaryData: {
 		numberOfImages: number;
@@ -24,6 +26,11 @@ export type MenuDialogProps = {
 				ranking: string;
 		  }[]
 		| null;
+	userData?: {
+		studentNumber: string | null;
+		nickname: string | null;
+	} | null;
+	loadingUserData: boolean;
 };
 
 const MenuDialog: React.FC<MenuDialogProps> = ({
@@ -33,8 +40,10 @@ const MenuDialog: React.FC<MenuDialogProps> = ({
 	summaryData,
 	loadingRanking,
 	rankingData,
+	loadingUserData,
+	userData,
 }) => {
-	const [userId] = useAtom(userIdAtom);
+	const userId = useAtomValue(userIdAtom);
 	return (
 		<AnimatePresence mode="wait">
 			{dialogPage === "ranking" ? (
@@ -56,32 +65,37 @@ const MenuDialog: React.FC<MenuDialogProps> = ({
 							<Skeleton className="h-8 w-full" />
 						</div>
 					) : rankingData && rankingData.length > 0 ? (
-						<div className="grid grid-flow-col grid-cols-2 grid-rows-5 gap-4 px-3">
-							{rankingData.map((row) => (
-								<div
-									className={`flex items-center justify-between rounded-lg border px-4 py-2 ${
-										row.userId == userId && "border-blue-300 bg-blue-100"
-									}`}
-									key={row.userId}
-								>
-									<div className="flex items-center gap-2">
-										<p
-											className={`flex items-center justify-between gap-2 text-lg font-semibold ${
-												row.ranking == "1"
-													? "text-yellow-500"
-													: row.ranking == "2"
-														? "text-gray-500"
-														: row.ranking == "3"
-															? "text-orange-500"
-															: ""
-											}`}
-										>
-											{row.ranking}位{row.ranking == "1" && <CrownIcon />}
-										</p>
+						<div
+							className="w-full overflow-y-auto"
+							style={{ maxHeight: "calc(100dvh - 250px)" }}
+						>
+							<div className="grid grid-flow-col grid-cols-1 grid-rows-10 gap-4 overflow-y-auto min-[370px]:grid-cols-2 min-[370px]:grid-rows-5">
+								{rankingData.map((row) => (
+									<div
+										className={`flex items-center justify-between rounded-lg border px-4 py-2 ${
+											row.userId == userId && "border-blue-300 bg-blue-100"
+										}`}
+										key={row.userId}
+									>
+										<div className="flex items-center gap-2">
+											<p
+												className={`flex items-center justify-between gap-2 text-lg font-semibold ${
+													row.ranking == "1"
+														? "text-yellow-500"
+														: row.ranking == "2"
+															? "text-gray-500"
+															: row.ranking == "3"
+																? "text-orange-500"
+																: ""
+												}`}
+											>
+												{row.ranking}位{row.ranking == "1" && <CrownIcon />}
+											</p>
+										</div>
+										<span>{row.images} 枚</span>
 									</div>
-									<span>{row.images} 枚</span>
-								</div>
-							))}
+								))}
+							</div>
 						</div>
 					) : !rankingData ? (
 						<p className="text-center">
@@ -145,6 +159,55 @@ const MenuDialog: React.FC<MenuDialogProps> = ({
 						</div>
 					) : (
 						<p className="text-center">集計データは現在公開されていません。</p>
+					)}
+					<Button onClick={() => setDialogPage("menu")} variant="secondary">
+						戻る
+					</Button>
+				</motion.div>
+			) : dialogPage === "user" ? (
+				<motion.div
+					animate={{ opacity: 1 }}
+					className="space-y-4"
+					exit={{ opacity: 0 }}
+					initial={{ opacity: 0 }}
+					key="user"
+					transition={{ duration: 0.25 }}
+				>
+					<DialogHeader>
+						<DialogTitle>登録情報</DialogTitle>
+					</DialogHeader>
+					{loadingUserData ? (
+						<div className="flex flex-col gap-2">
+							<Skeleton className="h-8 w-full" />
+							<Skeleton className="h-8 w-full" />
+							<Skeleton className="h-8 w-full" />
+						</div>
+					) : (
+						<div className="flex flex-col gap-2">
+							<p className="text-sm text-gray-500">
+								あなたの登録情報は以下の通りです
+							</p>
+							<div className="rounded-lg border p-4">
+								<p className="text-lg font-semibold">
+									生徒番号: {userData?.studentNumber || "未登録"}
+								</p>
+								<p className="text-lg font-semibold">
+									ニックネーム: {userData?.nickname || "未登録"}
+								</p>
+								<p className="text-lg font-semibold">
+									ユーザーID:{" "}
+									{userId
+										? userId
+												.split("-")
+												.map((part, idx) =>
+													idx === 0 ? part : part.replace(/./g, "*"),
+												)
+												.join("-")
+										: "未登録"}
+								</p>
+							</div>
+							<p className="text-sm text-gray-500">※登録情報は変更できません</p>
+						</div>
 					)}
 					<Button onClick={() => setDialogPage("menu")} variant="secondary">
 						戻る
@@ -214,6 +277,9 @@ const MenuDialog: React.FC<MenuDialogProps> = ({
 						<Button onClick={() => setDialogPage("ranking")}>
 							<CrownIcon /> ランキングを見る
 						</Button>
+						<Button onClick={() => setDialogPage("user")}>
+							<UserIcon /> 登録情報
+						</Button>
 					</div>
 					<div className="flex flex-col">
 						<Button asChild size="sm" variant="link">
@@ -222,7 +288,7 @@ const MenuDialog: React.FC<MenuDialogProps> = ({
 								rel="noopener noreferrer"
 								target="_blank"
 							>
-								Github
+								GitHub
 							</a>
 						</Button>
 						<Button

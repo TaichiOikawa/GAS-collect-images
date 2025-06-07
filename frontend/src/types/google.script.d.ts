@@ -12,6 +12,7 @@ declare global {
 
 		// Custom methods
 		// If you add a new method to the main.ts file, add it here
+		getAppUrl: () => Promise<string>;
 		checkCanUpload: () => Promise<boolean>;
 		createImageRecord: (
 			userId: string,
@@ -41,12 +42,20 @@ declare global {
 			  }
 			| { success: false }
 		>;
+		createUser: ({
+			studentNumber: string,
+			nickname: string,
+		}) => Promise<
+			{ success: true; userId: string } | { success: false; message?: string }
+		>;
 		getUserData: (userId: string) => Promise<{
 			userId: string;
 			createdAt: string;
 			images: string;
 			ranking: string;
-		}>;
+			studentNumber: string;
+			nickname: string;
+		} | null>;
 		getRanking: () => Promise<
 			| {
 					data: {

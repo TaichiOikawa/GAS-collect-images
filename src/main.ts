@@ -149,6 +149,41 @@ export function getSummary(userId: string) {
 	};
 }
 
+export function createUser({
+	studentNumber,
+	nickname,
+}: {
+	studentNumber: string;
+	nickname: string;
+}) {
+	const lock = LockService.getScriptLock();
+	try {
+		lock.waitLock(10000); // 最大10秒待つ
+		const userSheet = ss.at("Users");
+		const userId = Utilities.getUuid();
+		userSheet.insert({
+			userId: userId,
+			createdAt: new Date(),
+			images: `=COUNTIFS(Images!B:B, "${userId}", Images!D:D, "<>")`,
+			ranking: `=RANK(INDIRECT("C" & MATCH("${userId}", Users!A:A, 0)), Users!C:C, 0)`,
+			studentNumber: studentNumber,
+			nickname: nickname,
+		});
+		return {
+			success: true,
+			userId: userId,
+		};
+	} catch (e) {
+		console.error("Lock acquisition failed or error in createUser", e);
+		return {
+			success: false,
+			message: "ユーザーの作成に失敗しました。",
+		};
+	} finally {
+		lock.releaseLock();
+	}
+}
+
 export function getUserData(userId: string) {
 	const userSheet = ss.at("Users");
 	const user = userSheet.find({ userId: userId })[0];
@@ -156,29 +191,15 @@ export function getUserData(userId: string) {
 		console.log("getUserData called", user);
 		return {
 			userId: user.userId,
-			createdAt: user.createdAt,
+			createdAt:
+				user.createdAt instanceof Date
+					? user.createdAt.toISOString()
+					: user.createdAt,
 			images: user.images,
 			ranking: user.ranking,
+			studentNumber: user.studentNumber,
+			nickname: user.nickname,
 		};
-	}
-	if (userId !== "") {
-		console.log("Creating new user data for userId:", userId);
-		userSheet.insert({
-			userId: userId,
-			createdAt: new Date().toLocaleString(),
-			images: `=COUNTIFS(Images!B:B, "${userId}", Images!D:D, "<>")`,
-			ranking: `=RANK(INDIRECT("C" & MATCH("${userId}", Users!A:A, 0)), Users!C:C, 0)`,
-		});
-		const newUser = userSheet.find({ userId: userId })[0];
-		if (newUser) {
-			console.log("getUserData called", newUser);
-			return {
-				userId: newUser.userId,
-				createdAt: newUser.createdAt,
-				images: newUser.images,
-				ranking: newUser.ranking,
-			};
-		}
 	}
 	return null;
 }

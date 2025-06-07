@@ -1,6 +1,7 @@
 import { useAtom } from "jotai";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { userIdAtom } from "./userIdAtom";
+import { toast } from "sonner";
+import { userIdAtom } from "./atoms";
 
 export function useFileUpload() {
 	const inputRef = useRef<HTMLInputElement>(null);
@@ -93,7 +94,13 @@ export function useFileUpload() {
 				.checkCanUpload();
 		});
 		if (!canUpload) {
-			alert("アップロードは現在受け付けていません");
+			toast.error("アップロードは現在受け付けていません");
+			setDialogOpen(false);
+			return;
+		}
+
+		if (!userId) {
+			toast.error("ユーザーIDが取得できませんでした。");
 			setDialogOpen(false);
 			return;
 		}
@@ -109,21 +116,8 @@ export function useFileUpload() {
 					batchStart,
 					batchStart + BATCH_SIZE,
 				);
-				// 1. Get user data
-				await new Promise<void>((resolve, reject) => {
-					window.google.script.run
-						.withSuccessHandler(() => {
-							console.log("User checked in successfully.");
-							resolve();
-						})
-						.withFailureHandler((error: Error) => {
-							console.error("Error checking in user:", error);
-							reject(error);
-						})
-						.getUserData(userId);
-				});
 
-				// 2. Create image record
+				// 1. Create image record
 				let ids: string[] = [];
 				await new Promise<void>((resolve, reject) => {
 					window.google.script.run
@@ -163,7 +157,7 @@ export function useFileUpload() {
 						.createImageRecord(userId, batchFiles.length);
 				});
 
-				// 3. Upload images
+				// 2. Upload images
 				await Promise.all(
 					batchFiles.map(async (file, i) => {
 						const globalIdx = batchStart + i;
@@ -232,6 +226,18 @@ export function useFileUpload() {
 		}
 		setSendingList([]);
 	};
+
+	useEffect(() => {
+		if (dialogOpen) {
+			const handler = (e: BeforeUnloadEvent) => {
+				e.preventDefault();
+			};
+			window.addEventListener("beforeunload", handler);
+			return () => {
+				window.removeEventListener("beforeunload", handler);
+			};
+		}
+	}, [dialogOpen]);
 
 	return {
 		inputRef,

@@ -1,13 +1,15 @@
 import FilePreviewGrid from "@/components/FilePreviewGrid";
 import FileSelectButton from "@/components/FileSelectButton";
+import InitialDialog from "@/components/InitialDialog";
 import MenuDialog from "@/components/MenuDialog";
 import SendingDialog from "@/components/SendingDialog";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { userIdAtom } from "@/lib/userIdAtom";
+import { userIdAtom } from "@/lib/atoms";
 import { useAtom } from "jotai";
 import { AlignJustifyIcon, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { useFileUpload } from "./lib/useFileUpload";
 
 function App() {
@@ -25,8 +27,9 @@ function App() {
 		handleDialogClose,
 	} = useFileUpload();
 
+	const [menuDialogOpen, setMenuDialogOpen] = useState(false);
 	const [dialogPage, setDialogPage] = useState<
-		"menu" | "summarize" | "ranking" | "license"
+		"menu" | "summarize" | "ranking" | "user" | "license"
 	>("menu");
 	const [summaryData, setSummaryData] = useState<{
 		numberOfImages: number;
@@ -43,19 +46,27 @@ function App() {
 		| null
 	>(null);
 	const [loadingRanking, setLoadingRanking] = useState(false);
+	const [userData, setUserData] = useState<{
+		userId: string;
+		createdAt: string;
+		images: string;
+		ranking: string;
+		studentNumber: string;
+		nickname: string;
+	} | null>(null);
+	const [loadingUserData, setLoadingUserData] = useState(false);
 
 	useEffect(() => {
 		const userId = localStorage.getItem("user-id");
-		if (!userId) {
-			const newId = crypto.randomUUID();
-			localStorage.setItem("user-id", newId);
-			setUserId(newId);
-		} else {
+		if (userId) {
 			setUserId(userId);
+		} else {
+			setUserId(null);
 		}
 	}, [setUserId]);
 
 	useEffect(() => {
+		if (userId === null || userId === undefined) return;
 		if (dialogPage === "summarize") {
 			setLoadingSummaryData(true);
 			window.google.script.run
@@ -73,7 +84,6 @@ function App() {
 							| { success: false },
 					) => {
 						if (result.success) {
-							console.log("Summary data received:", result);
 							setSummaryData(result.data);
 							setLoadingSummaryData(false);
 						} else {
@@ -128,6 +138,54 @@ function App() {
 		}
 	}, [dialogPage]);
 
+	useEffect(() => {
+		if (!userId) return;
+		if (dialogPage === "user") {
+			setLoadingUserData(true);
+			window.google.script.run
+				.withSuccessHandler(
+					(
+						result: {
+							userId: string;
+							createdAt: string;
+							images: string;
+							ranking: string;
+							studentNumber: string;
+							nickname: string;
+						} | null,
+					) => {
+						if (result) {
+							setUserData(result);
+							setLoadingUserData(false);
+						} else {
+							localStorage.removeItem("user-id");
+							toast.error("ユーザーデータが見つかりませんでした。");
+							setUserData(null);
+							setLoadingUserData(false);
+							handleOpenChange(false);
+							setUserId(null);
+						}
+					},
+				)
+				.withFailureHandler((error: Error) => {
+					console.error("Error fetching user data:", error);
+				})
+				.getUserData(userId);
+		} else {
+			setUserData(null);
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [dialogPage]);
+
+	const handleOpenChange = (open: boolean) => {
+		if (!open) {
+			setMenuDialogOpen(false);
+			setDialogPage("menu");
+			return;
+		}
+		setMenuDialogOpen(true);
+	};
+
 	return (
 		<div className="flex min-h-dvh flex-col">
 			<header className="py-5 text-center">
@@ -144,9 +202,9 @@ function App() {
 						previewUrls={previewUrls}
 					/>
 				</div>
-				<div className="fixed bottom-6 left-1/2 flex w-full max-w-3xl -translate-x-1/2 justify-center gap-3">
+				<div className="fixed bottom-6 left-1/2 flex w-dvw -translate-x-1/2 justify-center gap-3 px-20">
 					<Button
-						className="h-12 w-62 text-lg"
+						className="h-12 w-full max-w-60 text-lg"
 						disabled={selectedFileArray.length === 0}
 						onClick={handleSend}
 					>
@@ -160,7 +218,7 @@ function App() {
 					>
 						<Trash2 className="size-6 text-red-500" />
 					</Button>
-					<Dialog onOpenChange={(open) => !open && setDialogPage("menu")}>
+					<Dialog onOpenChange={handleOpenChange} open={menuDialogOpen}>
 						<DialogTrigger asChild>
 							<Button className="h-12 w-12" variant="outline">
 								<AlignJustifyIcon className="size-6" />
@@ -171,9 +229,11 @@ function App() {
 								dialogPage={dialogPage}
 								loadingRanking={loadingRanking}
 								loadingSummaryData={loadingSummaryData}
+								loadingUserData={loadingUserData}
 								rankingData={rankingData}
 								setDialogPage={setDialogPage}
 								summaryData={summaryData}
+								userData={userData}
 							/>
 						</DialogContent>
 					</Dialog>
@@ -185,6 +245,8 @@ function App() {
 				handleDialogClose={handleDialogClose}
 				sendingList={sendingList}
 			/>
+
+			<InitialDialog />
 		</div>
 	);
 }
