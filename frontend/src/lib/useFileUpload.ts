@@ -162,6 +162,18 @@ export function useFileUpload() {
 		setSendingList([]);
 	};
 
+	useEffect(() => {
+		if (dialogOpen) {
+			const handler = (e: BeforeUnloadEvent) => {
+				e.preventDefault();
+			};
+			window.addEventListener("beforeunload", handler);
+			return () => {
+				window.removeEventListener("beforeunload", handler);
+			};
+		}
+	}, [dialogOpen]);
+
 	return {
 		inputRef,
 		inputFiles,

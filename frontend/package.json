@@ -39,10 +39,16 @@
 		"globals": "^16.0.0",
 		"prettier": "^3.5.3",
 		"prettier-plugin-tailwindcss": "^0.6.11",
+		"rollup": "^4.42.0",
 		"tw-animate-css": "^1.3.0",
 		"typescript": "~5.8.3",
 		"typescript-eslint": "^8.30.1",
 		"vite": "^6.3.5",
 		"vite-plugin-singlefile": "^2.2.0"
-	}
+	},
+	"engines": {
+		"npm": "use yarn instead",
+		"yarn": "4.0.0"
+	},
+	"packageManager": "yarn@4.9.2"
 }
