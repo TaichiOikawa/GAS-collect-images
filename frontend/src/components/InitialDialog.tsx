@@ -30,7 +30,8 @@ const initialFormSchema = z.object({
 	studentId: z
 		.string()
 		.min(4, "クラス・出席番号を入力してください")
-		.max(4, "クラス・出席番号を入力してください"),
+		.max(4, "クラス・出席番号を入力してください")
+		.regex(/^[0-9]*$/, { message: "半角数字で入力してください" }),
 	nickname: z
 		.string()
 		.min(1, "ニックネームを入力してください")
